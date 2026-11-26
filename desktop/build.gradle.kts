@@ -45,10 +45,12 @@ compose.desktop {
         nativeDistributions {
             targetFormats(TargetFormat.Exe, TargetFormat.Msi)
             packageName = "Linky"
-            packageVersion = "0.1.0"
+            packageVersion = "0.1.1"
             // TLS(jdk.crypto.ec), JavaCPP(jdk.unsupported) 등 필요한 JDK 모듈을 빠짐없이 넣는다
             includeAllModules = true
             windows {
+                // exe·바로가기 아이콘 (docs/logo/make-icons.ps1로 만든다)
+                iconFile.set(project.file("icons/linky.ico"))
                 menuGroup = "Linky"
                 shortcut = true
                 dirChooser = true

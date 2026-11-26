@@ -13,8 +13,8 @@ android {
         // TLS 1.3, MediaCodec 저지연 설정 등을 위해 안드로이드 10 이상
         minSdk = 29
         targetSdk = 36
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = 2
+        versionName = "0.1.1"
     }
 
     compileOptions {

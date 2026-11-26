@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" width="160" height="160" role="img">
+  <title>Linky</title>
+  <!-- 바탕: 둥근 사각형 -->
+  <rect width="160" height="160" rx="36" fill="#26215C"/>
+  <!-- L 글자 -->
+  <path d="M54 38 V108 H104" fill="none" stroke="#5DCAA5" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- 바로가기 화살표 (↙): 바깥에서 L 안쪽으로 들어온다 -->
+  <path d="M112 48 L80 80 M80 62 V80 H98" fill="none" stroke="#FFFFFF" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

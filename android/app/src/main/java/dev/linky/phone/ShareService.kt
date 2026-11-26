@@ -426,7 +426,7 @@ class ShareService : Service() {
     fun showPrompt(c: Connection, sas: String) {
         val p = PairingPrompt(c.id, sas, c.peerName, c.peerId, c)
         val n = Notification.Builder(this, CHANNEL_PAIR)
-            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setSmallIcon(R.drawable.ic_stat_linky)
             .setContentTitle("확인 숫자 ${p.code}")
             .setContentText("'${p.desktopName}' (ID ${p.desktopId}) 연결 요청 · 노트북에도 같은 숫자가 보이면 [일치]")
             .setStyle(Notification.BigTextStyle().bigText(
@@ -462,7 +462,7 @@ class ShareService : Service() {
         if (stopping) return
         AppState.log("$desktopName: $PAIRING_INTERRUPTED")
         val n = Notification.Builder(this, CHANNEL_PAIR)
-            .setSmallIcon(android.R.drawable.ic_dialog_alert)
+            .setSmallIcon(R.drawable.ic_stat_linky)
             .setContentTitle("페어링 중단")
             .setContentText(PAIRING_INTERRUPTED)
             .setStyle(Notification.BigTextStyle().bigText(PAIRING_INTERRUPTED))
@@ -498,7 +498,7 @@ class ShareService : Service() {
         return Notification.Builder(this, CHANNEL_SHARE)
             .setContentTitle("Linky 화면 공유 중")
             .setContentText(if (desktop != null) "연결된 노트북: $desktop" else "노트북 연결을 기다리는 중")
-            .setSmallIcon(android.R.drawable.ic_menu_camera)
+            .setSmallIcon(R.drawable.ic_stat_linky)
             .setOngoing(true)
             .setContentIntent(openApp())
             .addAction(Notification.Action.Builder(null, "중지", stop).build())

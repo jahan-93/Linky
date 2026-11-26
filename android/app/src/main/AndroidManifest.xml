@@ -10,7 +10,8 @@
     <!-- 백업·기기 이전에서 뺀다: 개인 키(identity.p12)와 신뢰 목록이 기기 밖으로 나가지 않게 (설계서 1.5) -->
     <application
         android:label="@string/app_name"
-        android:icon="@android:drawable/sym_def_app_icon"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher"
         android:theme="@android:style/Theme.DeviceDefault"
         android:allowBackup="false"
         android:fullBackupContent="false"

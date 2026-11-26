@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Linky 로고 색 (docs/logo/linky.svg) -->
+    <color name="linky_ink">#26215C</color>
+    <color name="linky_teal">#5DCAA5</color>
+    <color name="ic_launcher_background">#26215C</color>
+</resources>

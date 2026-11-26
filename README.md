@@ -1,3 +1,5 @@
+<p align="center"><img src="docs/logo/linky.svg" width="120" alt="Linky 로고"></p>
+
 # Linky
 
 같은 Wi-Fi에 있는 안드로이드 폰 화면을 노트북에서 보고 마우스로 조작합니다.

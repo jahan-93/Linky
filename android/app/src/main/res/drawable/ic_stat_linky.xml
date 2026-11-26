@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 알림 상태바 아이콘 (24dp, 흰색 한 가지). 바탕 없이 L과 연결 점만 크게 그린다. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <group
+        android:translateX="-36"
+        android:translateY="-20">
+        <path
+            android:pathData="M54,38 V108 H104"
+            android:strokeColor="#FFFFFFFF"
+            android:strokeWidth="16"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round" />
+        <!-- 바로가기 화살표 (↙): 바깥에서 L 안쪽으로 -->
+        <path
+            android:pathData="M112,48 L80,80 M80,62 V80 H98"
+            android:strokeColor="#FFFFFFFF"
+            android:strokeWidth="11"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round" />
+    </group>
+</vector>
