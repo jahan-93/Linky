@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PhoneMirror 0단계 테스트</title>
+<style>
+  :root { color-scheme: dark; }
+  body { margin: 0; padding: 16px; background: #15171c; color: #e8eaf0;
+         font-family: "Malgun Gothic", system-ui, sans-serif; display: flex; gap: 20px; flex-wrap: wrap; }
+  #screen { max-height: calc(100vh - 32px); max-width: 100%; border: 1px solid #333; border-radius: 12px;
+            cursor: crosshair; user-select: none; -webkit-user-drag: none; touch-action: none; background: #000;
+            min-width: 200px; min-height: 300px; }
+  .panel { flex: 1; min-width: 260px; max-width: 440px; }
+  h1 { font-size: 18px; margin: 0 0 12px; }
+  button { background: #2b3350; color: #fff; border: 0; border-radius: 8px; padding: 9px 14px; margin: 3px 2px; cursor: pointer; font-size: 14px; }
+  button:hover { background: #3a4570; }
+  input { width: 100%; box-sizing: border-box; padding: 9px; border-radius: 8px; border: 1px solid #444; background: #0f1115; color: #fff; font-size: 14px; }
+  .row { margin: 12px 0; }
+  .muted { color: #8b90a0; font-size: 13px; line-height: 1.6; }
+  #log { font: 12px Consolas, monospace; color: #9aa0b4; white-space: pre-wrap; max-height: 220px; overflow: auto; background: #0f1115; padding: 8px; border-radius: 8px; }
+  .ok { color: #5fd38d; } .bad { color: #ff7b7b; }
+  table { border-collapse: collapse; font-size: 13px; }
+  td { padding: 2px 10px 2px 0; }
+</style>
+</head>
+<body>
+<img id="screen" alt="폰 화면 (캡처 대기 중)" draggable="false">
+<div class="panel">
+  <h1>PhoneMirror 0단계 테스트 (실시간)</h1>
+  <div class="muted">
+    왼쪽 클릭·드래그 = 터치 (누르고 있으면 길게 누르기)<br>
+    휠 = 스크롤 · 오른쪽 클릭 = 뒤로 · 가운데 클릭 = 홈
+  </div>
+  <div class="row">
+    <button onclick="key('back')">◀ 뒤로</button>
+    <button onclick="key('home')">● 홈</button>
+    <button onclick="key('recents')">■ 최근 앱</button>
+    <button onclick="key('notifications')">알림창</button>
+  </div>
+  <div class="row">
+    <input id="text" placeholder="폰에서 입력란을 먼저 탭 → 여기에 글자 입력 → Enter">
+  </div>
+  <table class="muted">
+    <tr><td>폰 연결</td><td id="phone" class="bad">확인 중...</td></tr>
+    <tr><td>조작 채널</td><td id="ws" class="bad">연결 중...</td></tr>
+    <tr><td>접근성</td><td id="a11y">?</td></tr>
+    <tr><td>폰 화면 생성</td><td><span id="fps">0</span> 장/초</td></tr>
+    <tr><td>드래그 구간</td><td><span id="seg">0</span> · 취소 <span id="cancel">0</span> · 구간 추가 지연 <span id="over">0</span>ms</td></tr>
+  </table>
+  <div class="row"><div id="log"></div></div>
+</div>
+<script>
+  var T = new URLSearchParams(location.search).get('t');
+  var img = document.getElementById('screen');
+  var logBox = document.getElementById('log');
+
+  function log(msg) {
+    var line = new Date().toLocaleTimeString() + '  ' + msg + '\n';
+    logBox.textContent = (line + logBox.textContent).slice(0, 4000);
+  }
+  function setState(id, text, ok) {
+    var el = document.getElementById(id);
+    el.textContent = text;
+    el.className = ok ? 'ok' : 'bad';
+  }
+
+  // ---------- 화면: 연결 하나로 계속 받는 MJPEG 스트림 ----------
+  var session = -1, lastOpen = 0, zeroViewerPolls = 0;
+  function openStream() {
+    lastOpen = Date.now();
+    img.src = '/stream?t=' + encodeURIComponent(T) + '&s=' + session + '&n=' + lastOpen;
+  }
+  // 첫 화면이 오기 전에 실패한 경우만 여기로 온다 (한 번 뜬 스트림이 끊기는 건 아래 상태 확인에서 처리)
+  img.onerror = function () { setTimeout(openStream, 1000); };
+
+  // ---------- 조작: WebSocket으로 실시간 전송 ----------
+  var ws = null, wsWasClosed = false, replaced = false;
+  function connect() {
+    replaced = false;
+    ws = new WebSocket('ws://' + location.host + '/ws?t=' + encodeURIComponent(T));
+    ws.onopen = function () {
+      setState('ws', '연결됨', true);
+      if (wsWasClosed && session >= 0) openStream(); // 끊겼다 다시 붙었다면 화면 스트림도 새로 연다
+      wsWasClosed = false;
+    };
+    ws.onclose = function (e) {
+      wsWasClosed = true;
+      if (dragging) endDrag(performance.now());
+      if (e.code === 4001) {
+        // 다른 창(탭)이 조작권을 가져갔다. 자동으로 다시 붙으면 서로 빼앗으므로 기다린다.
+        replaced = true;
+        setState('ws', '다른 창이 조작 중 (이 화면을 클릭하면 다시 가져옴)', false);
+        return;
+      }
+      setState('ws', '끊김 (다시 연결 중)', false);
+      setTimeout(connect, 1000);
+    };
+    ws.onmessage = function (e) {
+      try { var m = JSON.parse(e.data); if (m.m) log(m.m); } catch (_) {}
+    };
+  }
+  function send(o) {
+    if (ws && ws.readyState === 1) { ws.send(JSON.stringify(o)); return true; }
+    return false;
+  }
+  /** 다른 창에 조작권을 뺏긴 상태라면 다시 가져온다. 가져왔으면 true (이번 입력은 쓰지 않음). */
+  function reclaim() {
+    if (!replaced) return false;
+    connect();
+    log('조작권을 다시 가져왔습니다');
+    return true;
+  }
+  function key(k) {
+    if (reclaim()) return;
+    if (!send({ t: 'key', k: k })) log('조작 채널이 끊겨 있어 보내지 못했습니다');
+  }
+  connect();
+
+  // 마우스 위치 → 폰 화면 기준 0~1 비율 (테두리 1px 제외)
+  function ratio(e) {
+    var r = img.getBoundingClientRect();
+    var w = img.clientWidth || r.width, h = img.clientHeight || r.height;
+    var x = (e.clientX - r.left - img.clientLeft) / w;
+    var y = (e.clientY - r.top - img.clientTop) / h;
+    return { x: Math.min(1, Math.max(0, +x.toFixed(4))), y: Math.min(1, Math.max(0, +y.toFixed(4))) };
+  }
+
+  // ---------- 드래그 ----------
+  var dragging = false, activeId = null, lastPos = null;
+
+  img.addEventListener('pointerdown', function (e) {
+    if (e.button === 1) { e.preventDefault(); key('home'); return; }
+    if (e.button !== 0 || dragging) return; // 이미 누르고 있으면 두 번째 손가락·버튼은 무시
+    e.preventDefault();
+    if (reclaim()) return;
+    dragging = true;
+    activeId = e.pointerId;
+    img.setPointerCapture(e.pointerId);
+    lastPos = ratio(e);
+    send({ t: 'down', x: lastPos.x, y: lastPos.y, ms: e.timeStamp });
+  });
+
+  img.addEventListener('pointermove', function (e) {
+    if (!dragging || e.pointerId !== activeId) return;
+    // 왼쪽 버튼이 이미 떼어졌는데 pointerup이 안 온 경우 (다른 버튼과 함께 눌렀다 뗀 경우 등)
+    if (e.pointerType === 'mouse' && !(e.buttons & 1)) { endDrag(e.timeStamp); return; }
+    // 브라우저가 한 프레임에 합친 이동도 모두 보내서 궤적을 부드럽게
+    var list = (e.getCoalescedEvents && e.getCoalescedEvents()) || [];
+    if (!list.length) list = [e];
+    // 와이파이가 막혀 전송이 밀리면 최신 위치만 보낸다 (옛 궤적을 늦게 재생하지 않도록)
+    if (ws && ws.bufferedAmount > 4096) list = [list[list.length - 1]];
+    for (var i = 0; i < list.length; i++) {
+      var p = ratio(list[i]);
+      send({ t: 'move', x: p.x, y: p.y, ms: list[i].timeStamp });
+      lastPos = p;
+    }
+  });
+
+  function endDrag(ts) {
+    if (!dragging) return;
+    dragging = false;
+    activeId = null;
+    if (lastPos) send({ t: 'up', x: lastPos.x, y: lastPos.y, ms: ts });
+  }
+  img.addEventListener('pointerup', function (e) {
+    if (e.pointerId !== activeId) return;
+    lastPos = ratio(e);
+    endDrag(e.timeStamp);
+  });
+  // 취소·포인터 잃음은 위치가 정확하지 않을 수 있어 마지막 이동 위치에서 뗀다
+  img.addEventListener('pointercancel', function (e) { if (e.pointerId === activeId) endDrag(e.timeStamp); });
+  img.addEventListener('lostpointercapture', function (e) { if (e.pointerId === activeId) endDrag(e.timeStamp); });
+  window.addEventListener('blur', function () { endDrag(performance.now()); });
+  document.addEventListener('visibilitychange', function () { if (document.hidden) endDrag(performance.now()); });
+
+  img.addEventListener('contextmenu', function (e) {
+    e.preventDefault();
+    // 드래그 중이거나 터치·펜 길게 누르기로 생긴 메뉴는 뒤로가기로 보지 않는다
+    if (dragging || (e.pointerType && e.pointerType !== 'mouse')) return;
+    key('back');
+  });
+  img.addEventListener('auxclick', function (e) { if (e.button === 1) e.preventDefault(); });
+
+  // ---------- 휠: 잠깐 모아서 칸 수로 보낸다 (폰에서도 시작 전 스크롤끼리 합친다) ----------
+  var wheelAcc = 0, wheelPos = null, wheelTimer = null, lastWheelAt = 0;
+  img.addEventListener('wheel', function (e) {
+    e.preventDefault();
+    if (e.ctrlKey || dragging) return; // 터치패드 확대(Ctrl+휠)와 드래그 중 휠은 무시
+    if (reclaim()) return;
+    var now = performance.now();
+    if (now - lastWheelAt > 400) wheelAcc = 0; // 오래전 남은 양은 버린다
+    lastWheelAt = now;
+    var px = e.deltaMode === 1 ? e.deltaY * 33 : (e.deltaMode === 2 ? e.deltaY * 400 : e.deltaY);
+    wheelAcc += px / 100; // 마우스 휠 한 칸 ≈ 100px
+    wheelPos = ratio(e);
+    if (!wheelTimer) wheelTimer = setTimeout(flushWheel, 60);
+  }, { passive: false });
+  function flushWheel() {
+    wheelTimer = null;
+    // 0.2칸이 안 되는 작은 양(터치패드)은 버리지 않고 다음 휠과 합친다
+    if (Math.abs(wheelAcc) >= 0.2 && wheelPos) {
+      send({ t: 'scroll', x: wheelPos.x, y: wheelPos.y, n: Math.round(wheelAcc * 10) / 10 });
+      wheelAcc = 0;
+    }
+  }
+
+  // ---------- 글자 입력 ----------
+  document.getElementById('text').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' && !e.isComposing && this.value) {
+      if (reclaim()) { log('다시 Enter를 누르면 보냅니다'); return; }
+      if (send({ t: 'text', v: this.value })) this.value = '';
+      else log('조작 채널이 끊겨 있어 글자를 보내지 못했습니다');
+    }
+  });
+
+  // ---------- 상태 ----------
+  function poll() {
+    fetch('/status?t=' + encodeURIComponent(T)).then(function (r) { return r.json(); }).then(function (s) {
+      setState('phone', s.capturing ? '화면 캡처 중' : '캡처 꺼짐', s.capturing);
+      setState('a11y', s.accessibility ? '켜짐' : '꺼짐', s.accessibility);
+      document.getElementById('fps').textContent = s.fps;
+      document.getElementById('seg').textContent = s.segments;
+      document.getElementById('cancel').textContent = s.dragCancels;
+      document.getElementById('over').textContent = s.overheadMs;
+      if (!s.capturing) return;
+      if (s.session !== session) {
+        // 캡처를 새로 시작하면 스트림도 다시 연다
+        session = s.session; zeroViewerPolls = 0; openStream();
+      } else if (s.viewers === 0 && Date.now() - lastOpen > 3000) {
+        // 스트림이 조용히 끊겼다 (와이파이 끊김, 노트북 절전 등) → 다시 연다
+        if (++zeroViewerPolls >= 2) { zeroViewerPolls = 0; openStream(); }
+      } else {
+        zeroViewerPolls = 0;
+      }
+    }).catch(function () {
+      setState('phone', '응답 없음 (같은 Wi-Fi인지, 캡처가 켜져 있는지 확인)', false);
+    });
+  }
+  poll();
+  setInterval(poll, 1000);
+</script>
+</body>
+</html>

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Linky</string>
+    <string name="a11y_label">Linky (조작)</string>
+    <string name="a11y_desc">노트북의 Linky 앱에서 보낸 탭, 드래그, 스크롤, 뒤로가기, 글자 입력을 이 폰에서 실행합니다.</string>
+</resources>

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">PM 테스트</string>
+    <string name="a11y_label">PhoneMirror 테스트 (조작)</string>
+    <string name="a11y_desc">노트북에서 보낸 탭, 스와이프, 뒤로가기, 글자 입력을 이 폰에서 실행합니다. 0단계 가능성 테스트용입니다.</string>
+</resources>
